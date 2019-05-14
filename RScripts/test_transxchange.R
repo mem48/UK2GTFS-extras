@@ -1,41 +1,35 @@
-# source("R/transxchange_import.R")
-# source("R/transxchange_import2.R")
-#source("extras/RScripts/oldcode/transxchange_import5.R")
-source("R/transxchange_import6.R")
-source("R/transxchange2gtfs2.R")
-source("R/get_cal.R")
-source("R/write_gtfs.R")
-source("R/get_naptan.R")
-source("R/transxchange_functions.R")
-source("R/gtfs_merge.R")
-source("R/transxchange_import_functions.R")
-source("R/gtfs_validate.R")
-dir = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/"
+# Load Functions
+code <- list.files("../UK2GTFS/R", full.names = T)
+for(i in code){source(i)}
+
+#Find Files
+dir = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/SW/"
 files = list.files(dir, full.names = T, recursive = T, pattern = ".xml")
-file = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/SW/swe_43-n1-_-y10-1.xml"
-file = files[381]
+#file = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/SW/swe_43-n1-_-y10-1.xml"
+#file = files[381]
 run_debug = T
 full_import = F
 naptan = get_naptan()
 cal = get_bank_holidays()
 
 
-x = 234
+x = 206
 res_single = transxchange_import(file = files[x], run_debug = run_debug, full_import = full_import)
-gtfs_single = transxchange2gtfs(obj = res_single, run_debug = T, cal = cal, naptan = naptan)
-write_gtfs(gtfs = gtfs_single, folder = "extras", name = gsub(".xml","",strsplit(files[x], "/")[[1]][7]))
+gtfs_single = transxchange_export(obj = res_single, run_debug = T, cal = cal, naptan = naptan)
+write_gtfs(gtfs = gtfs_single, folder = "../mem48/UK2GTFS-extras/export", name = gsub(".xml","",strsplit(files[x], "/")[[1]][7]))
 
 
 y = 1:length(files)
+y = 200:300
 res_batch  = pbapply::pblapply(files[y], transxchange_import, run_debug = run_debug, full_import = full_import)
-gtfs_batch = pbapply::pblapply(res_batch, transxchange2gtfs, run_debug = T, cal = cal, naptan = naptan)
+gtfs_batch = pbapply::pblapply(res_batch, transxchange_export, run_debug = T, cal = cal, naptan = naptan)
 foo = lapply(gtfs_batch, gtfs_validate_internal)
 gtfs_merged <- gtfs_merge(gtfs_batch)
 write_gtfs(gtfs = gtfs_merged, folder = "extras", name = "EA_nobook")
 
 
 res_all  = pbapply::pblapply(files, transxchange_import, run_debug = run_debug, full_import = full_import)
-gtfs_all = pbapply::pblapply(res_all, transxchange2gtfs, run_debug = T, cal = cal, naptan = naptan)
+gtfs_all = pbapply::pblapply(res_all, transxchange_export, run_debug = T, cal = cal, naptan = naptan)
 gtfs_merged <- gtfs_merge(gtfs_all)
 
 # Find the problem fast routes and split
@@ -51,28 +45,20 @@ write_gtfs(gtfs = gtfs_fast, folder = "extras", name = "EA_fast")
 
 saveRDS(res_single, "example_import.Rds")
 
-Services_main <- res_single$Services_main
-routes <- gtfs_single$routes
+res_batch <- list()
+for(y in 1:length(files)){
+  res_batch[[y]] <- try(transxchange_import(files[y], run_debug = run_debug, full_import = full_import))
+}
+table(sapply(res_batch,class))
+gtfs_batch <- list()
+for(y in 1:length(files)){
+  if(y %% 100 == 0){
+    message(y)
+  }
+  gtfs_batch[[y]] <- try(transxchange_export(res_batch[[y]], run_debug = T, cal = cal, naptan = naptan))
+}
+table(sapply(gtfs_batch,class))
 
-read.csv(stringsAsFactors = )
-
-cl = parallel::makeCluster(4)
-res = pbapply::pblapply(files[1:100], transxchange_import3, run_debug = run_debug, cl = cl)
-parallel::stopCluster(cl)
-
-names(res)
-file = "C:/Users/Malcolm/Downloads/Traveline/L/tfl_1-CEN-_-y05-690544.xml"
-system.time(res3 <- transxchange_import3(file, run_debug = T))
-system.time(res1 <- transxchange_import(file,  run_debug = T))
-system.time(res2 <- transxchange_import2(file, run_debug = T))
-
-file = files[7]
-
-
-system.time(xml_data1 <- XML::xmlToList(file))
-system.time(xml_data2 <- xml2::as_list(xml2::read_xml(file)))
-xml_data2 = xml_data2[[1]]
-
-StopPoints1 = xml_data1[["StopPoints"]]
-StopPoints2 = xml_data2[["StopPoints"]]
-identical(StopPoints1,StopPoints2)
+gtfs_batch2 <- gtfs_batch[sapply(gtfs_batch,class) == "list"]
+gtfs_merged <- gtfs_merge(gtfs_batch2)
+write_gtfs(gtfs = gtfs_merged, folder = "../mem48/UK2GTFS-extras/export/", name = "SE_skip")
