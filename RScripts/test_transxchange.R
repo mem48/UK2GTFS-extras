@@ -3,9 +3,9 @@ code <- list.files("../UK2GTFS/R", full.names = T)
 for(cds in code){source(cds)}
 
 #Find Files
-dir = "E:/Users/earmmor/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/Y/"
+dir = "E:/Users/earmmor/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/NW/"
+dir = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/NW/"
 
-#dir = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/L/"
 files = list.files(dir, full.names = T, recursive = T, pattern = ".xml")
 files = files[order(file.size(files))]
 #file = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/SW/swe_43-n1-_-y10-1.xml"
@@ -16,14 +16,17 @@ naptan = get_naptan()
 cal = get_bank_holidays()
 
 
-x = 12
+
+x = 1
+
 res_single <- transxchange_import(file = files[x], run_debug = run_debug, full_import = full_import)
 gtfs_single <- transxchange_export(obj = res_single, run_debug = T, cal = cal, naptan = naptan)
 write_gtfs(gtfs = gtfs_single, folder = "../UK2GTFS-extras/export/", name = gsub(".xml","",strsplit(files[x], "/")[[1]][7]))
 
 
 y = 1:length(files)
-y = 9:12
+y = 1:100
+
 
 
 res_batch  <- pbapply::pblapply(files[y], transxchange_import, run_debug = run_debug, full_import = full_import)
