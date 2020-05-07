@@ -59,7 +59,7 @@ for(i in 1:nrow(naptan3)){
       url <- url[c(length(url), length(url) - 1)]
       url <- as.numeric(url)
 
-      naptan3$stop_name[i] <- nm
+      naptan3$stop_name[i] <- stringr::str_to_title(nm)
       naptan3$stop_lon[i] <- url[1]
       naptan3$stop_lat[i] <- url[2]
     }
