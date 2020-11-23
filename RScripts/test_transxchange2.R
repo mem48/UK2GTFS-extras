@@ -2,16 +2,28 @@
 devtools::install_github("ITSleeds/UK2GTFS")
 library(UK2GTFS)
 
-transxchange2gtfs(path_in = "E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/NW.zip",
-                  path_out = "../mem48/UK2GTFS-extras/export/",
-                  name = "NW",
-                  silent = FALSE,
-                  ncores = 6,
-                  cal = get_bank_holidays(),
-                  naptan = get_naptan())
+path_in = list.files("E:/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/Nw", full.names = TRUE, pattern = ".xml")
+path_in = path_in[1:10]
+path_out = "../../mem48/UK2GTFS-extras/export/"
+name = "NW2"
+silent = FALSE
+ncores = 5
+cal = get_bank_holidays()
+naptan = get_naptan()
 
 
 
+transxchange2gtfs(path_in = path_in,
+                  path_out = path_out,
+                  name = name,
+                  silent = silent,
+                  ncores = ncores,
+                  cal = cal,
+                  naptan = naptan)
+
+
+code <- list.files("../UK2GTFS/R", full.names = T)
+for(cds in code){source(cds)}
 
 # #Find Files
 # dir = "E:/Users/earmmor/OneDrive - University of Leeds/Routing/TransitExchangeData/data_20180515/NW/"

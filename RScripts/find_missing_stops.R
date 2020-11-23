@@ -1,15 +1,26 @@
 library(UK2GTFS)
-files <- list.files("C:/Users/malco/OneDrive - University of Leeds/Data/UK2GTFS/GTFS/gtfs_20201102", full.names = TRUE,
+files <- list.files("E:/OneDrive - University of Leeds/Data/UK2GTFS/GTFS/gtfs_20201102", full.names = TRUE,
                     pattern = "zip")
 stops <- list()
+stop_times <- list()
 for(i in 1:length(files)){
   gtfs <- gtfs_read(files[i])
   stops[[i]] <- gtfs$stops
+  stop_times[[i]] <- gtfs$stop_times
   rm(gtfs)
 }
 
 stops <- dplyr::bind_rows(stops)
-stops <- stops[is.na(stops$stop_lon),]
+stop_times2 <- dplyr::bind_rows(stop_times[c(1:2,4:10)])
+stop_times3 <- stop_times[[3]]
+stop_times2$trip_id <- as.character(stop_times2$trip_id)
+stop_times <- rbind(stop_times2, stop_times3)
+rm(stop_times2, stop_times3)
+
+stops_missing <- stops[is.na(stops$stop_lon),]
+trip_missing <- unique(stop_times$trip_id[stop_times$stop_id %in% stops_missing$stop_id])
+stop_times <- stop_times[stop_times$trip_id %in% trip_missing,]
+
 
 stops_geopunk <- function(stop_id){
   url = paste0("https://www.geopunk.co.uk/bus-stop/",stop_id)
@@ -78,3 +89,36 @@ if(all(!duplicated(naptan_missing$stop_id))){
 }
 
 naptan_missing_dup <- naptan_missing[naptan_missing$stop_id %in% naptan_missing$stop_id[duplicated(naptan_missing$stop_id)],]
+
+stops_map_missing <- function(stps, stpts, stops_all){
+  stpts <- stpts[,c("trip_id","stop_id","stop_sequence")]
+  stpts$missing <- stpts$stop_id %in% stps$stop_id
+  miss_id <- seq_len(nrow(stpts))[stpts$missing]
+  miss_id <- unique(c(miss_id,miss_id-1,miss_id+1))
+  miss_id <- miss_id[order(miss_id)]
+  stpts <- stpts[miss_id,]
+  stpts_miss <- stpts[seq(2,nrow(stpts)-1,3),]
+  stpts_m1 <- stpts[seq(1,nrow(stpts)-2,3),]
+  stpts_p1 <- stpts[seq(3,nrow(stpts),3),]
+  stpts_miss <- stpts_miss[,1:2]
+  names(stpts_miss) = c("trip_id","missing_stop_id")
+  stpts_miss$stop_before <- stpts_m1$stop_id
+  stpts_miss$stop_after <- stpts_p1$stop_id
+  stops_all = stops_all[stops_all$stop_id %in% stpts$stop_id,]
+  stops_all = stops_all[,c("stop_id", "stop_lon" , "stop_lat")]
+  names(stops_all) = c("stop_id", "before_lon" , "before_lat")
+  stpts_miss <- dplyr::left_join(stpts_miss, stops_all, by = c("stop_before" = "stop_id"))
+  names(stops_all) = c("stop_id", "after_lon" , "after_lat")
+  stpts_miss <- dplyr::left_join(stpts_miss, stops_all, by = c("stop_after" = "stop_id"))
+  stpts_miss$trip_id <- NULL
+  # Fialing as stops after are missing
+  stpts_miss <- unique(stpts_miss)
+  geometry <- lapply(1:nrow(stpts_miss), function(x){
+    sub <- stpts_miss[x,c("before_lon", "before_lat", "after_lon", "after_lat")]
+    sub <- as.numeric(sub)
+    sub <- matrix(sub, ncol = 2, byrow = TRUE)
+    sub <- sf::st_linestring(sub)
+  })
+  stpts_miss$geometry <- sf::st_as_sfc(geometry, crs = 4326)
+  
+}
